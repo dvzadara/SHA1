@@ -32,31 +32,45 @@ def rotateLeft(num, shift):
 # Итератор чанков
 def chunk_iter(message):
     while message:
+        # Отсекаем 448 правых бит
         chunk = message & int448_max
+        # Считаем длинну отсеченного числа(ведущие нули не считаем)
         size = len(bin(chunk)) - 2
+        # Добавляем 1 справа
         chunk = (chunk << 1) + 1
+        # Добавляем нули справа чтобы размер составлял 448 бит после чего добавляем справа еще 64 бит(размер чанка size)
         chunk = chunk << (512 - size - 1)
         chunk += size
+        # Возвращаем 512-битный блок(448 бит информации и 64 бит размер чанка)
         yield chunk
         message = message >> 448
 
 
 # Подсчет хэш-значения числа message
 def SHA1(message, h0=0x67452301, h1=0xEFCDAB89, h2=0x98BADCFE, h3=0x10325476, h4=0xC3D2E1F0):
+    # Если тип message строка преобразуем ее в число
     if type(message) == str:
         message = text_to_bits(message)
+
     ml = len(bin(message)) - 2
     hash = 0
+
     # Разбиваем message на чанки и для каждого считаем хэш после чего складываем хэши чанков по модулю 2^512
     for chunk in chunk_iter(message):
+        # Разбиваем чанк на слова
         w = hex_to_words(chunk)
+
+        # Вычисляем массив w
         for i in range(16, 80):
             w.append(rotateLeft((w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16]), 5))
+
         a = h0
         b = h1
         c = h2
         d = h3
         e = h4
+
+        # 80 раз пересчитываем a, b, c, d, e
         for i in range(80):
             if 0 <= i <= 19:
                 f = (b and c) or ((not b) and d)
@@ -81,9 +95,11 @@ def SHA1(message, h0=0x67452301, h1=0xEFCDAB89, h2=0x98BADCFE, h3=0x10325476, h4
         h2 = h2 + c % (2 ** 32)
         h3 = h3 + d % (2 ** 32)
         h4 = h4 + e % (2 ** 32)
+        # Конкатенируем слова h0, h1, h2, h3, h4 получая 160-битное хеш-значение для чанка
         chunk_hash = h0 << 128 | h1 << 96 | h2 << 64 | h3 << 32 | h4
+
         hash += chunk_hash
-        hash %= 1 << 512
+        hash %= 1 << 160
     return hash
 
 
